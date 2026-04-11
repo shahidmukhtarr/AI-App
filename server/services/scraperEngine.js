@@ -26,7 +26,7 @@ const stores = [
 const ACCESSORY_KEYWORDS = ['cover', 'case', 'protector', 'glass', 'cable', 'charger', 'adapter', 'strap', 'pouch', 'handsfree', 'earphone', 'battery', 'back', 'skin', 'lens', 'watch', 'smartwatch', 'band', 'earbuds', 'buds', 'airpods', 'trimmer', 'speaker', 'powerbank'];
 
 function isRelevantProduct(title, query) {
-  const queryLower = query.toLowerCase();
+  const queryLower = query.toLowerCase().trim();
   const titleLower = title.toLowerCase();
 
   const isQueryForAccessory = ACCESSORY_KEYWORDS.some(kw => queryLower.includes(kw));
@@ -41,19 +41,37 @@ function isRelevantProduct(title, query) {
     }
   }
 
-  // Exact Model Matching (Strict)
-  const queryWords = queryLower.split(/\s+/);
-  const numericTokens = queryWords.filter(word => /\d/.test(word));
+  // --- Strict multi-word matching ---
+  // Normalize common variations
+  const normalize = (s) => s
+    .replace(/\+/g, ' plus ')
+    .replace(/[-_/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  if (numericTokens.length > 0) {
-    // Check if the most prominent numeric token (e.g. "13+" or "14t" or "s24") exists in the title
-    const primaryToken = numericTokens[0];
-    const safeToken = primaryToken.replace(/[+\-\(\)\[\]\{\}]/g, ''); // Ensure '13+' can match '13' or '13 plus'
+  const normQuery = normalize(queryLower);
+  const normTitle = normalize(titleLower);
 
-    // If the title does not contain the safe core token from the query, discard it
-    if (!titleLower.includes(safeToken)) {
-      return false;
-    }
+  const queryWords = normQuery.split(' ').filter(w => w.length > 0);
+  // Ignore very short filler words for matching
+  const FILLER = new Set(['the', 'a', 'an', 'for', 'in', 'of', 'and', 'with', 'new', 'pk']);
+  const significantWords = queryWords.filter(w => !FILLER.has(w) && w.length > 1);
+
+  if (significantWords.length === 0) return true;
+
+  // ALL significant query words must appear in the title
+  const missingWords = significantWords.filter(word => {
+    // Try exact substring first
+    if (normTitle.includes(word)) return false;
+    // Try word boundary match for short tokens (e.g. "s24" shouldn't match "s24s")
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`\\b${escaped}`, 'i');
+    if (re.test(normTitle)) return false;
+    return true;
+  });
+
+  if (missingWords.length > 0) {
+    return false;
   }
 
   return true;

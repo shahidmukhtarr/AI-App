@@ -35,9 +35,11 @@ export async function searchProducts(query, limit = 10) {
       const priceText = $a.find('.srch-price').text();
       const price = parsePrice(priceText);
 
-      // Filter by relevance - must match at least one query word
+      // Filter by relevance - all significant query words must be in title
       const titleLower = title.toLowerCase();
-      const isRelevant = queryWords.some(w => titleLower.includes(w));
+      const FILLER = new Set(['the', 'a', 'an', 'for', 'in', 'of', 'and', 'with', 'new', 'pk']);
+      const significantWords = queryWords.filter(w => !FILLER.has(w) && w.length > 1);
+      const isRelevant = significantWords.length === 0 || significantWords.every(w => titleLower.includes(w));
       if (!isRelevant) return;
 
       if (title && price) {
