@@ -4,14 +4,16 @@
   "description": "Pakistan's smartest price comparison engine — find the cheapest prices across Daraz, PriceOye, Mega.pk & more",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "preview": "next start",
+    "legacy:dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "node --watch server/index.js",
-    "client:dev": "cd client && npx vite --port 5173",
-    "build": "cd client && npx vite build",
-    "start": "node server/index.js",
-    "preview": "npm run build && npm run start"
+    "client:dev": "cd client && npx vite --port 5173"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
@@ -19,7 +21,10 @@
     "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
-    "node-cache": "^5.1.2"
+    "node-cache": "^5.1.2",
+    "next": "^15.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

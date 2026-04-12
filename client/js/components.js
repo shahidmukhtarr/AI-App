@@ -239,7 +239,7 @@ export function showToast(message, type = 'info', duration = 4000) {
 }
 
 /* Utility functions */
-function escapeHtml(text) {
+export function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
   div.textContent = text;

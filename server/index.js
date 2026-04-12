@@ -1,13 +1,17 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
+import { initDb } from './services/db.js';
+import { startScheduler } from './services/scheduler.js';
 
-dotenv.config();
+initDb().catch(err => {
+  console.error('Failed to initialize database:', err.message);
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,6 +77,9 @@ if (!process.env.VERCEL) {
   ║   → Environment: ${process.env.NODE_ENV || 'development'}    ║
   ╚═══════════════════════════════════════╝
     `);
+
+    startScheduler();
+    console.log('Background scraper scheduler started.');
   });
 
   process.on('SIGTERM', () => {

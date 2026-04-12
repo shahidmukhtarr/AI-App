@@ -149,6 +149,72 @@
       </div>
     </section>
 
+    <!-- Admin Backoffice -->
+    <section class="admin-section hidden" id="admin-section">
+      <div class="container">
+        <div class="admin-header">
+          <div>
+            <h2 class="section-title">Scraper Backoffice</h2>
+            <p class="section-subtitle">Browse data saved from scraper runs and manage the product database.</p>
+          </div>
+          <div class="admin-header-actions">
+            <button class="button button-secondary" id="admin-refresh-btn" type="button">Refresh data</button>
+            <button class="button button-primary" id="admin-back-btn" type="button">Back to search</button>
+          </div>
+        </div>
+
+        <div class="admin-grid">
+          <div class="admin-card">
+            <label for="admin-query">Search stored products</label>
+            <input id="admin-query" class="input-field" type="text" placeholder="Search product title, store, or URL" />
+          </div>
+          <div class="admin-card">
+            <label for="admin-store-filter">Filter by store</label>
+            <select id="admin-store-filter" class="input-field">
+              <option value="">All stores</option>
+            </select>
+          </div>
+          <div class="admin-card">
+            <label for="admin-sort">Sort by</label>
+            <select id="admin-sort" class="input-field">
+              <option value="created-desc">Newest first</option>
+              <option value="created-asc">Oldest first</option>
+              <option value="price-asc">Price low → high</option>
+              <option value="price-desc">Price high → low</option>
+              <option value="rating">Best rating</option>
+              <option value="reviews">Most reviews</option>
+              <option value="store">Store name</option>
+            </select>
+          </div>
+          <div class="admin-card admin-scrape-card">
+            <label for="admin-scrape-query">Manual scrape query</label>
+            <div class="admin-scrape-row">
+              <input id="admin-scrape-query" class="input-field" type="text" placeholder="e.g. iPhone 15" />
+              <button class="button button-primary" id="admin-scrape-btn" type="button">Scrape now</button>
+            </div>
+          </div>
+          <div class="admin-card admin-scheduler-card">
+            <label>Scheduler status</label>
+            <div class="admin-scheduler-row">
+              <button class="button button-secondary" id="admin-scheduler-refresh-btn" type="button">Refresh status</button>
+              <button class="button button-primary" id="admin-scheduler-run-btn" type="button">Run scheduler</button>
+            </div>
+            <div class="admin-scheduler-summary" id="admin-scheduler-status">No scheduler data loaded yet.</div>
+          </div>
+        </div>
+
+        <div class="admin-stats" id="admin-stats-grid"></div>
+
+        <div class="admin-table-wrapper">
+          <div class="admin-table-header">
+            <h3>Stored products</h3>
+            <span id="admin-products-count">0 items</span>
+          </div>
+          <div class="admin-table" id="admin-table"></div>
+        </div>
+      </div>
+    </section>
+
 
     <!-- Loading State -->
     <section class="loading-section hidden" id="loading-section">

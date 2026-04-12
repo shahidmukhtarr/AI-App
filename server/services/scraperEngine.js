@@ -10,6 +10,7 @@ import * as naheed from '../scrapers/naheed.js';
 import { identifyStore, delay, sanitizeText } from '../utils/helpers.js';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { saveProducts } from './db.js';
 
 const stores = [
   { adapter: daraz, name: 'Daraz', domain: 'daraz.pk' },
@@ -43,92 +44,86 @@ function isRelevantProduct(title, query) {
     const hasAccessoryInTitle = ACCESSORY_KEYWORDS.some(kw => {
       const regex = new RegExp(`\\b${kw}\\b`);
       if (!regex.test(titleLower)) return false;
-      // Check if it's a freebie mention (e.g. "FREE CHARGER AND COVER") — don't filter these
       const freebiePat = new RegExp(`(free|with|includes|bonus|gift|included)\\s.{0,30}\\b${kw}\\b`, 'i');
       if (freebiePat.test(titleLower)) return false;
-      // Otherwise it's an accessory — block it
       return true;
     });
     if (hasAccessoryInTitle) return false;
   }
 
-  // Word matching
-  const normalize = (s) => s.replace(/[-_/,.()]/g, ' ').replace(/\s+/g, ' ').trim();
+  const normalize = (s) => s
+    .replace(/[-_/,.()'’]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const normTitle = normalize(titleLower);
   const queryWords = normalize(queryLower).split(' ').filter(w => w.length > 1);
-  const FILLER = new Set(['the', 'a', 'an', 'for', 'in', 'of', 'and', 'with', 'new', 'buy', 'online', 'price', 'best', 'top', 'pk']);
+  const FILLER = new Set(['the', 'a', 'an', 'for', 'in', 'of', 'and', 'with', 'new', 'buy', 'online', 'price', 'best', 'top', 'pk', 'care', 'home']);
 
   const significantWords = queryWords.filter(w => !FILLER.has(w));
   if (significantWords.length === 0) return true;
 
-  // Synonym mapping for Pakistani e-commerce
   const SYNONYMS = {
-    'women': ['ladies', 'girl', 'female', 'woman', 'lady', 'woman'],
+    'women': ['ladies', 'girl', 'female', 'woman', 'lady'],
     'ladies': ['women', 'lady', 'girl', 'female'],
+    'men': ['man', 'boy', 'male', 'gent', 'gents'],
     'man': ['men', 'boy', 'male', 'gent', 'gents'],
-    'men': ['man', 'boy', 'male', 'gents', 'gent'],
     'bag': ['handbag', 'purse', 'clutch', 'crossbody', 'tote', 'satchel'],
     'phone': ['mobile', 'smartphone', 'cellphone'],
     'mobile': ['phone', 'smartphone', 'cellphone'],
+    'monitor': ['display', 'screen'],
+    'headphone': ['headset', 'earphone', 'earphones'],
     'earbuds': ['buds', 'earphones', 'pods', 'airpods', 'tws'],
-  };
-
-  const getWordVariants = (word) => {
-    return [word, ...(SYNONYMS[word] || [])];
-  };
-
-  const isMatchFound = (variants, target) => {
-    return variants.some(v => {
-      // For purely numeric model numbers like "11", enforce strict word boundaries
-      // to avoid matching "111", "115", etc.
-      if (/^\d+$/.test(v) && v.length >= 1) {
-        const regex = new RegExp(`\\b${v}\\b`);
-        return regex.test(target);
-      }
-      // For alphanumeric stuff or long words, simple includes is safer (e.g. "iphone11" or "redmi")
-      return target.includes(v);
-    });
+    'keyboard': ['board'],
+    'charger': ['adapter', 'powerbank', 'charger'],
+    'laptop': ['notebook', 'macbook'],
+    'television': ['tv', 'smart tv'],
+    'soap': ['cleanser'],
+    'cream': ['moisturizer', 'lotion'],
+    'lotion': ['cream', 'moisturizer'],
+    'shoes': ['footwear', 'sneakers', 'sandals', 'trainers', 'slippers'],
+    'watch': ['wristwatch'],
+    'camera': ['dslr', 'mirrorless'],
+    'printer': ['laser printer', 'inkjet'],
   };
 
   const GENERIC_DESCRIPTORS = new Set([
     'lightweight', 'wireless', 'portable', 'soft', 'comfortable', 'casual', 'stylish',
-    'cheap', 'new', 'best', 'premium', 'budget', 'smart', 'gaming', 'compact',
-    'small', 'large', 'waterproof', 'durable', 'fashion', 'running', 'sports', 'gym', 'travel'
+    'cheap', 'new', 'premium', 'budget', 'smart', 'gaming', 'compact',
+    'small', 'large', 'waterproof', 'durable', 'fashion', 'running', 'sports', 'gym', 'travel',
+    'moisturizing', 'protective', 'natural', 'organic', 'herbal', 'daily', 'intense',
+    'clear', 'pure', 'gentle', 'deep', 'night', 'day', 'face', 'body', 'hair', 'skin',
+    'fresh', 'strong', 'soft', 'extra', 'mini', 'pro', 'plus', 'max'
   ]);
 
-  const brandWord = significantWords[0];
-  const brandVariants = getWordVariants(brandWord);
-  const isGenericDescriptor = GENERIC_DESCRIPTORS.has(brandWord);
+  const getWordVariants = (word) => [word, ...(SYNONYMS[word] || [])];
+  const doesMatch = (word) => getWordVariants(word).some(v => {
+    if (/^\d+$/.test(v)) {
+      return new RegExp(`\\b${v}\\b`).test(normTitle);
+    }
+    return normTitle.includes(v);
+  });
 
-  // If the first word is a generic descriptor, don't require it as a brand match;
-  // instead, rely on the rest of the query for relevance.
-  if (!isGenericDescriptor && !isMatchFound(brandVariants, normTitle)) {
-    return false;
+  const coreWords = significantWords.filter(w => !GENERIC_DESCRIPTORS.has(w));
+  const descriptorWords = significantWords.filter(w => GENERIC_DESCRIPTORS.has(w));
+
+  const matchedCore = coreWords.filter(doesMatch);
+  const matchedDescriptors = descriptorWords.filter(doesMatch);
+
+  if (coreWords.length === 0) {
+    return matchedDescriptors.length > 0;
   }
 
-  // For single-word queries, brand/descriptor match is enough
-  if (significantWords.length === 1) return true;
-
-  // For multi-word queries, at least one MORE word (or its synonym) must also match
-  const restWords = significantWords.slice(1);
-  const restMatchedCount = restWords.filter(w => {
-    const variants = getWordVariants(w);
-    return isMatchFound(variants, normTitle);
-  }).length;
-
-  // If search for "iPhone 11", and title contains accessory keywords but query doesn't, 
-  // be even more aggressive in filtering if it's an expensive category
-  const involvesExpensiveTech = queryLower.includes('iphone') || queryLower.includes('samsung') || queryLower.includes('ipad');
-  if (involvesExpensiveTech && !isMatchFound(restWords, normTitle) && restWords.length > 0) {
-      return false; // Stricter for tech
+  if (coreWords.length === 1) {
+    return matchedCore.length === 1;
   }
 
-  // For generic descriptors like "lightweight", require at least one other query word match
-  if (isGenericDescriptor && restMatchedCount === 0) {
-    return false;
+  if (coreWords.length === 2) {
+    return matchedCore.length === 2 || (matchedCore.length === 1 && matchedDescriptors.length > 0);
   }
 
-  return restMatchedCount >= 1;
+  const lastCoreWord = coreWords[coreWords.length - 1];
+  const hasLastCoreMatch = doesMatch(lastCoreWord);
+  return matchedCore.length >= coreWords.length - 1 && hasLastCoreMatch;
 }
 
 function generateDemoReviews(query) {
@@ -282,9 +277,14 @@ export async function searchAllStores(query, limit = 150) {
     return a.price - b.price;
   });
 
+  const saveResult = await saveProducts(allProducts, query);
+  console.log(`[ScraperEngine] Saved products for query "${query}": new=${saveResult.newCount}, updated=${saveResult.updatedCount}`);
+
   return {
     query,
     totalResults: allProducts.length,
+    savedCount: saveResult.newCount,
+    updatedCount: saveResult.updatedCount,
     storesSearched,
     storeErrors,
     usedFallback: false,
@@ -314,9 +314,15 @@ export async function getProductFromUrl(url) {
       return { error: `Could not extract product details from ${store.name}` };
     }
 
+    await saveProducts([product], product.title || url);
+
     // Also search other stores for the same product
     const searchQuery = product.title.split(' ').slice(0, 5).join(' ');
     const otherResults = await searchAllStores(searchQuery, 6);
+
+    if (otherResults.products && otherResults.products.length > 0) {
+      await saveProducts(otherResults.products, searchQuery);
+    }
 
     return {
       product,
@@ -419,6 +425,10 @@ export async function getProductFromUrl(url) {
 
     // Search across all stores with the extracted name
     const results = await searchAllStores(searchQuery, 8);
+
+    if (results.products && results.products.length > 0) {
+      await saveProducts(results.products, searchQuery);
+    }
 
     return {
       product: null,

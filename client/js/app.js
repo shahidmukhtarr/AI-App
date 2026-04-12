@@ -7,7 +7,8 @@ import {
   createReviewCard,
   createReviewsSummary,
   showToast,
-  formatPrice
+  formatPrice,
+  escapeHtml
 } from './components.js';
 
 // ---- Config ----
@@ -31,10 +32,29 @@ const productsGrid = document.getElementById('products-grid');
 const priceRangeBar = document.getElementById('price-range-bar');
 const resultsTitle = document.getElementById('results-title');
 const resultsMeta = document.getElementById('results-meta');
+const reviewsSection = document.getElementById('reviews-section');
 const sortSelect = document.getElementById('sort-select');
 const viewGridBtn = document.getElementById('view-grid');
 const viewListBtn = document.getElementById('view-list');
 const loadingStatus = document.getElementById('loading-status');
+
+const adminLink = document.getElementById('admin-link');
+const adminSection = document.getElementById('admin-section');
+const adminBackBtn = document.getElementById('admin-back-btn');
+const adminRefreshBtn = document.getElementById('admin-refresh-btn');
+const adminQueryInput = document.getElementById('admin-query');
+const adminStoreFilter = document.getElementById('admin-store-filter');
+const adminSortSelect = document.getElementById('admin-sort');
+const adminScrapeQuery = document.getElementById('admin-scrape-query');
+const adminScrapeBtn = document.getElementById('admin-scrape-btn');
+const adminSchedulerRefreshBtn = document.getElementById('admin-scheduler-refresh-btn');
+const adminSchedulerRunBtn = document.getElementById('admin-scheduler-run-btn');
+const adminSchedulerStatus = document.getElementById('admin-scheduler-status');
+const adminTable = document.getElementById('admin-table');
+const adminStatsGrid = document.getElementById('admin-stats-grid');
+const adminProductsCount = document.getElementById('admin-products-count');
+
+let adminProducts = [];
 
 // ---- Init ----
 document.addEventListener('DOMContentLoaded', init);
@@ -183,12 +203,272 @@ function init() {
   // Focus search on load
   setTimeout(() => searchInput.focus(), 500);
 
-  // Check URL params
+  if (adminBackBtn) {
+    adminBackBtn.addEventListener('click', showSearchView);
+  }
+
+  if (adminRefreshBtn) {
+    adminRefreshBtn.addEventListener('click', loadAdminProducts);
+  }
+
+  if (adminQueryInput) {
+    adminQueryInput.addEventListener('input', loadAdminProducts);
+  }
+
+  if (adminStoreFilter) {
+    adminStoreFilter.addEventListener('change', loadAdminProducts);
+  }
+
+  if (adminSortSelect) {
+    adminSortSelect.addEventListener('change', loadAdminProducts);
+  }
+
+  if (adminScrapeBtn) {
+    adminScrapeBtn.addEventListener('click', handleAdminScrape);
+  }
+
+  if (adminSchedulerRefreshBtn) {
+    adminSchedulerRefreshBtn.addEventListener('click', loadSchedulerStatus);
+  }
+
+  if (adminSchedulerRunBtn) {
+    adminSchedulerRunBtn.addEventListener('click', handleAdminRunScheduler);
+  }
+
+  window.addEventListener('popstate', () => {
+    const adminMode = window.location.pathname === '/admin';
+    if (adminMode) {
+      openAdmin(false);
+    } else {
+      showSearchView(false);
+    }
+  });
+
   const params = new URLSearchParams(window.location.search);
   const q = params.get('q');
-  if (q) {
+  const adminMode = params.has('admin') || window.location.pathname === '/admin';
+
+  if (adminMode) {
+    openAdmin(false);
+  } else if (q) {
     searchInput.value = q;
     handleSearch();
+  }
+}
+
+// ---- Admin Helpers ----
+
+function openAdmin(pushHistory = true) {
+  heroSection.classList.add('hidden');
+  resultsSection.classList.add('hidden');
+  reviewsSection.classList.add('hidden');
+  if (adminSection) adminSection.classList.remove('hidden');
+  if (pushHistory && window.location.pathname !== '/admin') {
+    window.history.pushState({}, '', '/admin');
+  }
+  populateAdminStores();
+  loadAdminProducts();
+}
+
+function showSearchView(pushHistory = true) {
+  heroSection.classList.remove('hidden');
+  resultsSection.classList.remove('hidden');
+  reviewsSection.classList.remove('hidden');
+  if (adminSection) adminSection.classList.add('hidden');
+  if (!pushHistory) return;
+  const url = new URL(window.location);
+  url.pathname = '/';
+  if (currentQuery) {
+    url.searchParams.set('q', currentQuery);
+  } else {
+    url.search = '';
+  }
+  window.history.pushState({}, '', url.toString());
+}
+
+async function populateAdminStores() {
+  try {
+    const data = await apiCall(`${API_BASE}/stores`);
+    if (!adminStoreFilter) return;
+    adminStoreFilter.innerHTML = '<option value="">All stores</option>' +
+      data.stores.map(store => `<option value="${store.name}">${store.name}</option>`).join('');
+  } catch (err) {
+    console.error('Failed to load store list:', err);
+  }
+}
+
+async function loadAdminProducts() {
+  if (!adminSection || adminSection.classList.contains('hidden')) return;
+  const query = adminQueryInput?.value.trim() || '';
+  const store = adminStoreFilter?.value || '';
+  const sort = adminSortSelect?.value || 'created-desc';
+
+  try {
+    const params = new URLSearchParams({
+      q: query,
+      store,
+      sort,
+      limit: '100',
+    });
+
+    const data = await apiCall(`${API_BASE}/products?${params.toString()}`);
+    adminProducts = data.products || [];
+    if (adminProductsCount) {
+      adminProductsCount.textContent = `${data.total || adminProducts.length} items`;
+    }
+    renderAdminProducts(adminProducts);
+    await loadAdminStats();
+    await loadSchedulerStatus();
+  } catch (err) {
+    console.error('Admin products load failed:', err);
+    showToast('Unable to load admin products.', 'error');
+  }
+}
+
+async function loadAdminStats() {
+  try {
+    const stats = await apiCall(`${API_BASE}/admin/stats`);
+    if (!adminStatsGrid) return;
+    adminStatsGrid.innerHTML = `
+      <div class="admin-stat-card">
+        <span>Total products</span>
+        <strong>${stats.totalProducts}</strong>
+      </div>
+      <div class="admin-stat-card">
+        <span>Total stores</span>
+        <strong>${stats.totalStores}</strong>
+      </div>
+      <div class="admin-stat-card">
+        <span>Last scrape</span>
+        <strong>${new Date(stats.latestScrape).toLocaleString()}</strong>
+      </div>
+    `;
+  } catch (err) {
+    console.error('Admin stats load failed:', err);
+  }
+}
+
+function formatSchedulerStatus(status) {
+  if (!status) return 'Scheduler status unavailable.';
+
+  const lines = [];
+  lines.push(`Mode: ${status.isRunning ? 'Running' : 'Idle'}`);
+  lines.push(`Next run: ${status.nextRun ? new Date(status.nextRun).toLocaleString() : 'Not scheduled'}`);
+  lines.push(`Interval: every ${status.intervalMinutes} minutes`);
+  lines.push(`Queries: ${status.queries?.length || 0}`);
+
+  if (status.lastRunResult) {
+    const lastRun = status.lastRunResult;
+    lines.push(`Last run: ${lastRun.timestamp ? new Date(lastRun.timestamp).toLocaleString() : 'unknown'}`);
+    lines.push(`Last status: ${lastRun.status}`);
+    if (typeof lastRun.totalScraped === 'number') lines.push(`Scraped: ${lastRun.totalScraped}`);
+    if (typeof lastRun.totalSaved === 'number') lines.push(`Saved: ${lastRun.totalSaved}`);
+    if (typeof lastRun.totalUpdated === 'number') lines.push(`Updated: ${lastRun.totalUpdated}`);
+    if (lastRun.error) lines.push(`Error: ${lastRun.error}`);
+  }
+
+  return lines.join(' • ');
+}
+
+async function loadSchedulerStatus() {
+  if (!adminSchedulerStatus) return;
+  try {
+    const status = await apiCall(`${API_BASE}/admin/jobs/status`);
+    adminSchedulerStatus.textContent = formatSchedulerStatus(status);
+  } catch (err) {
+    console.error('Failed to load scheduler status:', err);
+    adminSchedulerStatus.textContent = 'Unable to load scheduler status.';
+  }
+}
+
+async function handleAdminRunScheduler() {
+  if (!adminSchedulerRunBtn) return;
+
+  adminSchedulerRunBtn.disabled = true;
+  adminSchedulerRunBtn.textContent = 'Running...';
+
+  try {
+    const result = await fetch(`${API_BASE}/admin/jobs/run`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await result.json();
+    if (!result.ok) {
+      throw new Error(data.error || `HTTP ${result.status}`);
+    }
+
+    showToast(`Scheduler run complete. Saved ${data.totalSaved || 0} products.`, 'success');
+    if (adminSchedulerStatus) {
+      adminSchedulerStatus.textContent = formatSchedulerStatus(data);
+    }
+    await loadAdminProducts();
+  } catch (err) {
+    console.error('Scheduler run failed:', err);
+    showToast(err.message || 'Scheduler run failed.', 'error');
+  } finally {
+    adminSchedulerRunBtn.disabled = false;
+    adminSchedulerRunBtn.textContent = 'Run scheduler';
+  }
+}
+
+function renderAdminProducts(products) {
+  if (!adminTable) return;
+  if (!products || products.length === 0) {
+    adminTable.innerHTML = '<div class="admin-empty">No stored products found.</div>';
+    return;
+  }
+
+  adminTable.innerHTML = products.map(product => `
+    <div class="admin-row">
+      <div class="admin-row-title">
+        <a href="${product.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(product.title)}</a>
+        <span class="admin-badge">${escapeHtml(product.store)}</span>
+      </div>
+      <div class="admin-row-meta">
+        <span>${formatPrice(product.price)}</span>
+        <span>${product.rating ? product.rating.toFixed(1) : 'N/A'} ★</span>
+        <span>${product.reviewCount || 0} reviews</span>
+        <span>${new Date(product.scrapedAt).toLocaleString()}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function handleAdminScrape() {
+  const query = adminScrapeQuery?.value.trim();
+  if (!query || query.length < 2) {
+    showToast('Enter a query to scrape.', 'warning');
+    return;
+  }
+
+  adminScrapeBtn.disabled = true;
+  adminScrapeBtn.textContent = 'Scraping...';
+
+  try {
+    const response = await fetch(`${API_BASE}/admin/scrape`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: query, limit: 12 }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || 'Scrape failed');
+    }
+
+    showToast(`Saved ${result.scraped || 0} products to the database.`, 'success');
+    await loadAdminProducts();
+  } catch (err) {
+    console.error('Admin scrape failed:', err);
+    showToast(err.message || 'Scrape failed.', 'error');
+  } finally {
+    adminScrapeBtn.disabled = false;
+    adminScrapeBtn.textContent = 'Scrape now';
   }
 }
 
@@ -249,9 +529,9 @@ async function handleSearch() {
         showResults(currentProducts, label, meta.join(' '));
       }
     } else {
-      // Text search
+      // Text search against stored products in the database
       animateLoadingStores();
-      data = await apiCall(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+      data = await apiCall(`${API_BASE}/products?q=${encodeURIComponent(query)}&limit=100`);
 
       if (data.error) {
         throw new Error(data.error);
@@ -260,10 +540,8 @@ async function handleSearch() {
       currentProducts = data.products || [];
 
       const meta = [];
-      if (data.totalResults) meta.push(`${data.totalResults} results`);
-      if (data.storesSearched?.length) meta.push(`from ${data.storesSearched.join(', ')}`);
-      if (data.cached) meta.push('(cached)');
-      if (data.usedFallback) meta.push('• Demo results shown');
+      if (data.total) meta.push(`${data.total} results`);
+      if (data.page) meta.push(`page ${data.page}`);
 
       showResults(data.products || [], query, meta.join(' '));
     }
@@ -281,13 +559,30 @@ async function handleSearch() {
 // ---- API ----
 async function apiCall(url) {
   const response = await fetch(url);
-  const data = await response.json();
+  const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(data.error || `HTTP ${response.status}`);
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const data = JSON.parse(text);
+      errorMessage = data.error || data.message || errorMessage;
+    } catch (parseError) {
+      if (text && text.trim().length > 0) {
+        errorMessage = text.trim();
+      }
+    }
+    throw new Error(errorMessage);
   }
 
-  return data;
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (parseError) {
+    throw new Error('Invalid JSON response from server');
+  }
 }
 
 // ---- Display Functions ----

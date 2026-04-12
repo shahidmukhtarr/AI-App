@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { searchAllStores, getProductFromUrl, getReviews, getSupportedStores } from '../services/scraperEngine.js';
+import { queryStoredProducts, getDbStats } from '../services/db.js';
+import { runBackgroundScrape, getSchedulerStatus } from '../services/scheduler.js';
 import { isValidUrl } from '../utils/helpers.js';
 
 const router = Router();
@@ -86,6 +88,78 @@ router.get('/stores', (req, res) => {
     stores: getSupportedStores(),
     total: getSupportedStores().length,
   });
+});
+
+/**
+ * GET /api/products
+ * Read products stored in the database
+ */
+router.get('/products', async (req, res, next) => {
+  try {
+    const { q, store, sort, limit, page } = req.query;
+    const results = await queryStoredProducts({
+      q: q || '',
+      store: store || '',
+      sort: sort || 'created-desc',
+      limit: parseInt(limit, 10) || 50,
+      page: parseInt(page, 10) || 1,
+    });
+    res.json(results);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/admin/scrape
+ * Trigger a scraper run and store results in the database
+ */
+router.post('/admin/scrape', async (req, res, next) => {
+  try {
+    const { q, limit } = req.body;
+
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({ error: 'Scrape query is required and must be at least 2 characters.' });
+    }
+
+    const results = await searchAllStores(q.trim(), parseInt(limit, 10) || 12);
+    res.json({ success: true, scraped: results.products.length, ...results });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/admin/stats
+ * Database summary information
+ */
+router.get('/admin/stats', async (req, res, next) => {
+  try {
+    res.json(await getDbStats());
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/admin/jobs/status
+ * Scheduler status information
+ */
+router.get('/admin/jobs/status', (req, res) => {
+  res.json(getSchedulerStatus());
+});
+
+/**
+ * POST /api/admin/jobs/run
+ * Trigger the scheduler manually
+ */
+router.post('/admin/jobs/run', async (req, res, next) => {
+  try {
+    const result = await runBackgroundScrape();
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
