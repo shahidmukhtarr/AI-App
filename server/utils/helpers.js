@@ -61,7 +61,7 @@ export function identifyStore(url) {
     if (hostname.includes('daraz.pk')) return 'daraz';
     if (hostname.includes('priceoye.pk')) return 'priceoye';
     if (hostname.includes('mega.pk')) return 'mega';
-    if (hostname.includes('telemart.pk')) return 'telemart';
+    if (hostname.includes('highfy.pk')) return 'highfy';
     if (hostname.includes('ishopping.pk')) return 'ishopping';
     if (hostname.includes('shophive.com')) return 'shophive';
     if (hostname.includes('homeshopping.pk')) return 'homeshopping';

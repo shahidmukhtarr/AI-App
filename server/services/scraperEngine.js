@@ -1,7 +1,7 @@
 import * as daraz from '../scrapers/daraz.js';
 import * as priceoye from '../scrapers/priceoye.js';
 import * as mega from '../scrapers/mega.js';
-import * as telemart from '../scrapers/telemart.js';
+import * as highfy from '../scrapers/highfy.js';
 import * as ishopping from '../scrapers/ishopping.js';
 import * as shophive from '../scrapers/shophive.js';
 import * as homeshopping from '../scrapers/homeshopping.js';
@@ -15,7 +15,7 @@ const stores = [
   { adapter: daraz, name: 'Daraz', domain: 'daraz.pk' },
   { adapter: priceoye, name: 'PriceOye', domain: 'priceoye.pk' },
   { adapter: mega, name: 'Mega.pk', domain: 'mega.pk' },
-  { adapter: telemart, name: 'Telemart', domain: 'telemart.pk' },
+  { adapter: highfy, name: 'Highfy', domain: 'highfy.pk' },
   // iShopping: disabled - Cloudflare blocks all server-side requests (403)
   // { adapter: ishopping, name: 'iShopping', domain: 'ishopping.pk' },
   { adapter: shophive, name: 'Shophive', domain: 'shophive.com' },
@@ -61,17 +61,65 @@ function isRelevantProduct(title, query) {
   const significantWords = queryWords.filter(w => !FILLER.has(w));
   if (significantWords.length === 0) return true;
 
-  // First significant word (brand) MUST always match
+  // Synonym mapping for Pakistani e-commerce
+  const SYNONYMS = {
+    'women': ['ladies', 'girl', 'female', 'woman', 'lady', 'woman'],
+    'ladies': ['women', 'lady', 'girl', 'female'],
+    'man': ['men', 'boy', 'male', 'gent', 'gents'],
+    'men': ['man', 'boy', 'male', 'gents', 'gent'],
+    'bag': ['handbag', 'purse', 'clutch', 'crossbody', 'tote', 'satchel'],
+    'phone': ['mobile', 'smartphone', 'cellphone'],
+    'mobile': ['phone', 'smartphone', 'cellphone'],
+    'earbuds': ['buds', 'earphones', 'pods', 'airpods', 'tws'],
+  };
+
+  const getWordVariants = (word) => {
+    return [word, ...(SYNONYMS[word] || [])];
+  };
+
+  const isMatchFound = (variants, target) => {
+    return variants.some(v => {
+      // For purely numeric model numbers like "11", enforce strict word boundaries
+      // to avoid matching "111", "115", etc.
+      if (/^\d+$/.test(v) && v.length >= 1) {
+        const regex = new RegExp(`\\b${v}\\b`);
+        return regex.test(target);
+      }
+      // For alphanumeric stuff or long words, simple includes is safer (e.g. "iphone11" or "redmi")
+      return target.includes(v);
+    });
+  };
+
+  // First significant word MUST match (or its synonym)
   const brandWord = significantWords[0];
-  if (!normTitle.includes(brandWord)) return false;
+  const brandVariants = getWordVariants(brandWord);
+  if (!isMatchFound(brandVariants, normTitle)) {
+    return false;
+  }
 
   // For single-word queries, brand match is enough
   if (significantWords.length === 1) return true;
 
-  // For multi-word queries, at least one MORE word must also match
+  // For multi-word queries, at least one MORE word (or its synonym) must also match
+  // (Lower threshold for beauty/fashion/skincare)
+  const isBroadCategory = queryLower.includes('wash') || queryLower.includes('serum') || 
+                          queryLower.includes('bag') || queryLower.includes('dress') ||
+                          queryLower.includes('shoe') || queryLower.includes('cream');
+
   const restWords = significantWords.slice(1);
-  const restMatched = restWords.filter(w => normTitle.includes(w)).length;
-  return restMatched >= 1;
+  const restMatchedCount = restWords.filter(w => {
+    const variants = getWordVariants(w);
+    return isMatchFound(variants, normTitle);
+  }).length;
+
+  // If search for "iPhone 11", and title contains accessory keywords but query doesn't, 
+  // be even more aggressive in filtering if it's an expensive category
+  const involvesExpensiveTech = queryLower.includes('iphone') || queryLower.includes('samsung') || queryLower.includes('ipad');
+  if (involvesExpensiveTech && !isMatchFound(restWords, normTitle) && restWords.length > 0) {
+      return false; // Stricter for tech
+  }
+
+  return isBroadCategory ? restMatchedCount >= 0 : restMatchedCount >= 1;
 }
 
 function generateDemoReviews(query) {
@@ -125,11 +173,11 @@ function generateDemoReviews(query) {
       author: 'Hassan T.',
       rating: 5,
       date: '2026-02-15',
-      title: 'PTA approved, genuine product',
-      text: `Bought the ${productName} from here and it came with official warranty. PTA approved and works perfectly on all networks. Very satisfied!`,
+      title: 'Original product, fast shipping',
+      text: `Bought the ${productName} from Highfy and it came in perfect condition. 100% original and the packaging was top-notch. Very satisfied!`,
       verified: true,
-      store: 'Telemart',
-      storeColor: '#00b300',
+      store: 'Highfy',
+      storeColor: '#000000',
       helpful: 89,
     },
     {
@@ -149,10 +197,10 @@ function generateDemoReviews(query) {
 /**
  * Search across all stores in parallel
  */
-export async function searchAllStores(query, limit = 40) {
+export async function searchAllStores(query, limit = 150) {
   console.log(`[ScraperEngine] Searching all stores for: "${query}"`);
 
-  const timeout = 20000; // 20 second timeout per store
+  const timeout = 30000; // 30 second timeout per store
 
   // Run all scrapers in parallel with timeout
   const results = await Promise.allSettled(

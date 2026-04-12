@@ -1,7 +1,4 @@
-/**
- * PricePK — Main Application Logic
- * Handles search, API communication, rendering, and user interactions
- */
+console.log('FLASHI app loaded - v2.0 - facewash fix');
 
 import {
   createProductCard,
@@ -34,8 +31,6 @@ const productsGrid = document.getElementById('products-grid');
 const priceRangeBar = document.getElementById('price-range-bar');
 const resultsTitle = document.getElementById('results-title');
 const resultsMeta = document.getElementById('results-meta');
-const reviewsList = document.getElementById('reviews-list');
-const reviewsSummary = document.getElementById('reviews-summary');
 const sortSelect = document.getElementById('sort-select');
 const viewGridBtn = document.getElementById('view-grid');
 const viewListBtn = document.getElementById('view-list');
@@ -393,9 +388,13 @@ async function fetchReviews(query) {
     const data = await apiCall(`${API_BASE}/reviews?q=${encodeURIComponent(query)}`);
 
     if (data.reviews && data.reviews.length > 0) {
-      reviewsSummary.innerHTML = createReviewsSummary(data.reviews);
-      reviewsList.innerHTML = data.reviews.map((review, i) => createReviewCard(review, i)).join('');
-      document.getElementById('reviews-section').style.display = 'block';
+      const summaryEl = document.getElementById('reviews-summary');
+      const listEl = document.getElementById('reviews-list');
+      const sectionEl = document.getElementById('reviews-section');
+      
+      if (summaryEl) summaryEl.innerHTML = createReviewsSummary(data.reviews);
+      if (listEl) listEl.innerHTML = data.reviews.map((review, i) => createReviewCard(review, i)).join('');
+      if (sectionEl) sectionEl.style.display = 'block';
     }
   } catch (error) {
     console.error('Reviews fetch error:', error);
@@ -405,7 +404,7 @@ async function fetchReviews(query) {
 // ---- Loading Animation ----
 function animateLoadingStores() {
   const storeEls = document.querySelectorAll('.loading-store');
-  const storeNames = ['Daraz', 'PriceOye', 'Mega.pk', 'Telemart', 'iShopping', 'Shophive', 'HomeShopping'];
+  const storeNames = ['Daraz', 'PriceOye', 'Mega.pk', 'Highfy', 'OLX', 'Shophive', 'Naheed'];
   let currentIndex = 0;
 
   const interval = setInterval(() => {

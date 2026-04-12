@@ -6,7 +6,7 @@ const STORE_NAME = 'Mega.pk';
 const STORE_URL = 'https://www.mega.pk';
 const STORE_COLOR = '#0071dc';
 
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 20) {
   try {
     // Mega.pk uses an AJAX search endpoint that returns HTML results
     const searchUrl = `${STORE_URL}/ajax.php?key=search&search=${encodeURIComponent(query)}`;

@@ -6,7 +6,7 @@ const STORE_NAME = 'Shophive';
 const STORE_URL = 'https://www.shophive.com';
 const STORE_COLOR = '#ee2e24';
 
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 20) {
   try {
     const searchUrl = `${STORE_URL}/catalogsearch/result/?q=${encodeURIComponent(query)}`;
     

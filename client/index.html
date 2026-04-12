@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FLASHI — Find the Lowest Price Across Pakistan's Top Stores</title>
   <meta name="description"
-    content="Compare prices from Daraz, PriceOye, Telemart & Mega — all in one search. Save money on smartphones, laptops, and more." />
+    content="Compare prices from Daraz, PriceOye, Highfy & Mega — all in one search. Save money on smartphones, laptops, and more." />
   <meta property="og:title" content="FLASHI — Find the Lowest Price Across Pakistan" />
-  <meta property="og:description" content="Compare prices from Daraz, PriceOye, Telemart & Mega — all in one search." />
+  <meta property="og:description" content="Compare prices from Daraz, PriceOye, Highfy & Mega — all in one search." />
   <meta property="og:type" content="website" />
   <meta name="theme-color" content="#6b705c" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -55,8 +55,8 @@
               across Pakistan's top stores
             </h1>
             <p class="hero-subtitle">
-              Compare prices from Daraz, PriceOye, Telemart & Mega — all in one
-              search. Save money on smartphones, laptops, and more.
+              Compare prices from Daraz, PriceOye, Highfy & Many More — all in one
+              search.
             </p>
 
             <!-- Search Box -->
@@ -70,8 +70,7 @@
                   </svg>
                 </div>
                 <input type="text" id="search-input" class="search-input"
-                  placeholder="Search product or paste any URL..." autocomplete="off"
-                  spellcheck="false" />
+                  placeholder="Search product or paste any URL..." autocomplete="off" spellcheck="false" />
                 <button class="search-btn" id="search-btn" type="button">
                   <span class="search-btn-text">Compare Prices</span>
                 </button>
@@ -142,6 +141,15 @@
       </div>
     </section>
 
+    <!-- Reviews Section -->
+    <section class="reviews-section hidden" id="reviews-section">
+      <div class="container">
+        <div id="reviews-summary"></div>
+        <div class="reviews-list" id="reviews-list"></div>
+      </div>
+    </section>
+
+
     <!-- Loading State -->
     <section class="loading-section hidden" id="loading-section">
       <div class="container">
@@ -152,7 +160,7 @@
             <div class="spinner-ring"></div>
           </div>
           <h3 class="loading-title">Searching across stores...</h3>
-          <p class="loading-subtitle" id="loading-status">Comparing prices on Daraz, PriceOye, Mega.pk & Telemart</p>
+          <p class="loading-subtitle" id="loading-status">Comparing prices on Daraz, PriceOye, Mega.pk & Highfy</p>
         </div>
       </div>
     </section>
@@ -172,7 +180,7 @@
             <div class="step-number">02</div>
             <div class="step-icon">⚡</div>
             <h3>Instant Comparison</h3>
-            <p>We search across Daraz, PriceOye, Telemart & Mega simultaneously in seconds.</p>
+            <p>We search across Daraz, PriceOye, Highfy & Mega simultaneously in seconds.</p>
           </div>
           <div class="step-card">
             <div class="step-number">03</div>
@@ -200,6 +208,9 @@
       </div>
     </div>
   </footer>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
 
   <!-- Contact Modal -->
   <div class="modal-overlay hidden" id="contact-modal">

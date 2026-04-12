@@ -8,7 +8,7 @@ const STORE_COLOR = '#f85606';
 /**
  * Search for products on Daraz.pk using their internal JSON API
  */
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 30) {
   try {
     // Daraz has an internal AJAX API that returns JSON
     const searchUrl = `${STORE_URL}/catalog/?ajax=true&q=${encodeURIComponent(query)}`;

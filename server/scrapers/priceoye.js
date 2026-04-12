@@ -10,7 +10,7 @@ const STORE_COLOR = '#e21b70';
  * Search products on PriceOye.pk using HTML scraping
  * PriceOye uses server-side rendered HTML with .productBox containers
  */
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 20) {
   try {
     const searchUrl = `${STORE_URL}/search?q=${encodeURIComponent(query)}`;
     
@@ -22,69 +22,46 @@ export async function searchProducts(query, limit = 10) {
     const $ = cheerio.load(response.data);
     const products = [];
 
-    // PriceOye uses .productBox with nested .product-card <a> tags
-    $('.productBox').each((i, el) => {
-      if (i >= limit) return false;
+    // Modern PriceOye selectors: .product-card (search) or a.ga-dataset (listing)
+    const productItems = $('.product-card, a.ga-dataset');
+    
+    productItems.each((i, el) => {
+      if (products.length >= limit) return false;
 
       const $el = $(el);
-      const card = $el.find('a.product-card');
+      // Try specific selectors for PriceOye
+      const name = $el.attr('data-product-name') || 
+                   $el.find('.product-card-title').text().trim() || 
+                   $el.find('h4').first().text().trim() || 
+                   $el.find('.card-name').text().trim() || '';
       
-      // Product name from data attribute
-      const name = card.attr('data-product-name') || '';
-      const productId = card.attr('data-product-id') || '';
-      const link = card.attr('href') || '';
+      const link = $el.attr('href') || $el.find('a').attr('href') || '';
       
-      // Image from amp-img element
-      const image = $el.find('amp-img.product-thumbnail').attr('src') || 
-                     $el.find('img.product-thumbnail').attr('src') || 
+      // Image extraction
+      const image = $el.find('img').attr('src') || 
                      $el.find('amp-img').attr('src') || 
-                     $el.find('img').attr('data-src') ||
-                     $el.find('img').attr('src') || '';
+                     $el.find('img').attr('data-src') || '';
       
-      // Extract prices from full text
-      const fullText = $el.text().replace(/\s+/g, ' ').trim();
-      const priceMatches = fullText.match(/Rs\s*([\d,]+)/g) || [];
+      // Price extraction
+      const priceText = $el.find('.price-box, .product-card-price, .price, .product-card-price-container').text();
+      const price = parsePrice(priceText) || parsePrice($el.text());
       
-      let price = null;
-      let originalPrice = null;
-      
-      if (priceMatches.length >= 1) {
-        price = parsePrice(priceMatches[0]);
-      }
-      if (priceMatches.length >= 2) {
-        originalPrice = parsePrice(priceMatches[1]);
-        // If second price is higher, it's original; if lower, swap
-        if (originalPrice && price && originalPrice < price) {
-          [price, originalPrice] = [originalPrice, price];
-        }
-      }
-
-      // Extract rating from text (e.g. "4.9")
-      const ratingMatch = fullText.match(/(\d+\.?\d*)\s*\d+\s*Reviews?/i);
-      const rating = ratingMatch ? parseFloat(ratingMatch[1]) : 0;
-      
-      // Extract review count
-      const reviewMatch = fullText.match(/(\d+)\s*Reviews?/i);
-      const reviewCount = reviewMatch ? parseInt(reviewMatch[1]) : 0;
-
-      // Discount
-      const discountMatch = fullText.match(/(\d+)%\s*OFF/i);
-      const discount = discountMatch ? `-${discountMatch[1]}%` : null;
+      const oldPriceText = $el.find('.product-card-price-old, .old-price').text();
+      const originalPrice = parsePrice(oldPriceText);
 
       if (name && price) {
         products.push({
           title: sanitizeText(name),
           price,
           originalPrice,
-          discount,
           image: image.startsWith('http') ? image : `${STORE_URL}${image}`,
           url: link.startsWith('http') ? link : `${STORE_URL}${link}`,
-          rating,
-          reviewCount,
+          rating: 0,
+          reviewCount: 0,
           store: STORE_NAME,
           storeUrl: STORE_URL,
           storeColor: STORE_COLOR,
-          inStock: !$el.find('.out-of-stock, .outOfStock').length,
+          inStock: !$el.find('.out-of-stock, .outOfStock, .sold-out').length,
         });
       }
     });

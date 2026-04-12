@@ -10,7 +10,7 @@ const STORE_COLOR = '#e31837';
  * Search products on Naheed.pk (Magento 2 store)
  * Naheed.pk uses Magento 2 with server-side rendered search results.
  */
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 20) {
   try {
     const searchUrl = `${STORE_URL}/catalogsearch/result/?q=${encodeURIComponent(query)}`;
 
