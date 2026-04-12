@@ -17,6 +17,7 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 
 <body>
@@ -33,7 +34,7 @@
         <a href="#how-it-works" class="nav-link">How It Works</a>
         <a href="#stores-bar" class="nav-link">Stores</a>
       </nav>
-      <a href="#contact" class="contact-btn">Contact Us</a>
+      <a href="#" class="contact-btn" id="contact-btn">Contact Us</a>
       <button class="hamburger" id="hamburger" aria-label="Toggle menu">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
@@ -69,7 +70,7 @@
                   </svg>
                 </div>
                 <input type="text" id="search-input" class="search-input"
-                  placeholder="Search any product... e.g. iPhone 15, Samsung Galaxy" autocomplete="off"
+                  placeholder="Search product or paste any URL..." autocomplete="off"
                   spellcheck="false" />
                 <button class="search-btn" id="search-btn" type="button">
                   <span class="search-btn-text">Compare Prices</span>
@@ -199,6 +200,79 @@
       </div>
     </div>
   </footer>
+
+  <!-- Contact Modal -->
+  <div class="modal-overlay hidden" id="contact-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Contact Us</h2>
+        <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-tab="reviews">Reviews & Issues</button>
+        <button class="modal-tab" data-tab="services">Services</button>
+      </div>
+
+      <!-- Reviews & Issues Form -->
+      <form class="modal-form" id="form-reviews" data-tab-content="reviews">
+        <div class="form-group">
+          <label for="ri-name">Your Name</label>
+          <input type="text" id="ri-name" placeholder="Enter your name" required />
+        </div>
+        <div class="form-group">
+          <label for="ri-email">Email</label>
+          <input type="email" id="ri-email" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="ri-type">Type</label>
+          <select id="ri-type" required>
+            <option value="" disabled selected>Select type</option>
+            <option value="review">Review / Feedback</option>
+            <option value="bug">Bug Report</option>
+            <option value="issue">General Issue</option>
+            <option value="suggestion">Suggestion</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="ri-message">Message</label>
+          <textarea id="ri-message" rows="4" placeholder="Describe your review or issue..." required></textarea>
+        </div>
+        <button type="submit" class="form-submit">Submit Review / Issue</button>
+      </form>
+
+      <!-- Services Form -->
+      <form class="modal-form hidden" id="form-services" data-tab-content="services">
+        <div class="form-group">
+          <label for="sv-name">Your Name</label>
+          <input type="text" id="sv-name" placeholder="Enter your name" required />
+        </div>
+        <div class="form-group">
+          <label for="sv-email">Email</label>
+          <input type="email" id="sv-email" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="sv-phone">Phone Number</label>
+          <input type="tel" id="sv-phone" placeholder="+92 300 1234567" />
+        </div>
+        <div class="form-group">
+          <label for="sv-service">Service Needed</label>
+          <select id="sv-service" required>
+            <option value="" disabled selected>Select a service</option>
+            <option value="web-scraping">Custom Web Scraping</option>
+            <option value="price-alerts">Price Alert Setup</option>
+            <option value="web-development">Web Development</option>
+            <option value="ai-integration">AI Integration</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sv-details">Details</label>
+          <textarea id="sv-details" rows="4" placeholder="Tell us more about what you need..." required></textarea>
+        </div>
+        <button type="submit" class="form-submit">Request Service</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>

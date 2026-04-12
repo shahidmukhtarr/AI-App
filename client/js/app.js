@@ -61,6 +61,106 @@ function init() {
     });
   }
 
+  // Contact modal
+  const contactBtn = document.getElementById('contact-btn');
+  const contactModal = document.getElementById('contact-modal');
+  const modalClose = document.getElementById('modal-close');
+
+  if (contactBtn && contactModal) {
+    contactBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      contactModal.classList.remove('hidden');
+    });
+
+    modalClose.addEventListener('click', () => {
+      contactModal.classList.add('hidden');
+    });
+
+    contactModal.addEventListener('click', (e) => {
+      if (e.target === contactModal) contactModal.classList.add('hidden');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !contactModal.classList.contains('hidden')) {
+        contactModal.classList.add('hidden');
+      }
+    });
+
+    // Tabs
+    contactModal.querySelectorAll('.modal-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        contactModal.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.tab;
+        contactModal.querySelectorAll('[data-tab-content]').forEach(form => {
+          form.classList.toggle('hidden', form.dataset.tabContent !== target);
+        });
+      });
+    });
+
+    // Form submissions
+    const formReviews = document.getElementById('form-reviews');
+    const formServices = document.getElementById('form-services');
+
+    // Initialize EmailJS
+    if (window.emailjs) {
+      emailjs.init('5eOSAHGXf0eZoAFZW');
+    }
+
+    [formReviews, formServices].forEach(form => {
+      if (!form) return;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = form.querySelector('.form-submit');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Sending...';
+        submitBtn.disabled = true;
+
+        const isReview = form.id === 'form-reviews';
+        const formName = isReview ? 'Review/Issue' : 'Service request';
+
+        const templateParams = isReview
+          ? {
+              form_type: 'Review / Issue',
+              name: form.querySelector('#ri-name').value,
+              email: form.querySelector('#ri-email').value,
+              type: form.querySelector('#ri-type').value,
+              message: form.querySelector('#ri-message').value,
+              time: new Date().toLocaleString(),
+            }
+          : {
+              form_type: 'Service Request',
+              name: form.querySelector('#sv-name').value,
+              email: form.querySelector('#sv-email').value,
+              phone: form.querySelector('#sv-phone').value || 'Not provided',
+              type: form.querySelector('#sv-service').value,
+              message: form.querySelector('#sv-details').value,
+              time: new Date().toLocaleString(),
+            };
+
+        try {
+          if (window.emailjs) {
+            await emailjs.send('service_b6r9d4h', 'template_2o5t1bl', templateParams);
+          }
+          showToast(`${formName} submitted successfully! We'll get back to you soon.`, 'success');
+          form.reset();
+          contactModal.classList.add('hidden');
+          // Reset tabs to first
+          contactModal.querySelectorAll('.modal-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+          contactModal.querySelectorAll('[data-tab-content]').forEach(f => {
+            f.classList.toggle('hidden', f.dataset.tabContent !== 'reviews');
+          });
+        } catch (err) {
+          console.error('EmailJS error:', err?.text || err?.message || err);
+          showToast('Failed to send. Please try again later.', 'error');
+        } finally {
+          submitBtn.textContent = originalText;
+          submitBtn.disabled = false;
+        }
+      });
+    });
+  }
+
   // Search event listeners
   searchBtn.addEventListener('click', handleSearch);
   searchInput.addEventListener('keydown', (e) => {
@@ -138,11 +238,21 @@ async function handleSearch() {
         throw new Error(data.error);
       }
 
-      // Combine main product with alternatives
-      const products = [data.product, ...(data.alternatives || [])].filter(Boolean);
-      currentProducts = products;
-
-      showResults(products, data.product?.title || query);
+      if (data.product) {
+        // Supported store URL — show main product + alternatives
+        const products = [data.product, ...(data.alternatives || [])].filter(Boolean);
+        currentProducts = products;
+        showResults(products, data.product.title || query);
+      } else {
+        // Non-store URL (image, random page) — show search results from extracted name
+        currentProducts = data.products || [];
+        const label = data.extractedQuery || query;
+        const meta = [];
+        if (data.totalResults) meta.push(`${data.totalResults} results`);
+        if (data.storesSearched?.length) meta.push(`from ${data.storesSearched.join(', ')}`);
+        if (data.extractedQuery) meta.push(`• Detected: "${data.extractedQuery}"`);
+        showResults(currentProducts, label, meta.join(' '));
+      }
     } else {
       // Text search
       animateLoadingStores();

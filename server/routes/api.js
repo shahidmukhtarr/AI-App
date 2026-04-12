@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { searchAllStores, getProductFromUrl, getReviews, getSupportedStores } from '../services/scraperEngine.js';
-import { getCached, setCache, generateCacheKey, getCacheStats } from '../services/cache.js';
 import { isValidUrl } from '../utils/helpers.js';
 
 const router = Router();
@@ -21,19 +20,8 @@ router.get('/search', async (req, res, next) => {
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
 
-    // Check cache
-    const cacheKey = generateCacheKey('search', q);
-    const cached = getCached(cacheKey);
-    if (cached) {
-      console.log(`[API] Cache hit for search: "${q}"`);
-      return res.json({ ...cached, cached: true });
-    }
-
-    // Search all stores
+    // Always fetch fresh results
     const results = await searchAllStores(q.trim(), parseInt(limit) || 8);
-
-    // Cache results
-    setCache(cacheKey, results);
 
     res.json({ ...results, cached: false });
   } catch (error) {
@@ -57,21 +45,11 @@ router.get('/product', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    // Check cache
-    const cacheKey = generateCacheKey('product', url);
-    const cached = getCached(cacheKey);
-    if (cached) {
-      return res.json({ ...cached, cached: true });
-    }
-
     const result = await getProductFromUrl(url);
 
     if (result.error) {
       return res.status(400).json(result);
     }
-
-    // Cache results
-    setCache(cacheKey, result);
 
     res.json({ ...result, cached: false });
   } catch (error) {
@@ -91,14 +69,7 @@ router.get('/reviews', async (req, res, next) => {
       return res.status(400).json({ error: 'Search query is required for reviews' });
     }
 
-    const cacheKey = generateCacheKey('reviews', q);
-    const cached = getCached(cacheKey);
-    if (cached) {
-      return res.json({ ...cached, cached: true });
-    }
-
     const reviews = await getReviews(q.trim());
-    setCache(cacheKey, reviews);
 
     res.json({ ...reviews, cached: false });
   } catch (error) {
@@ -125,7 +96,6 @@ router.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     uptime: process.uptime(),
-    cache: getCacheStats(),
     timestamp: new Date().toISOString(),
   });
 });
