@@ -53,9 +53,10 @@ export default function HomePage() {
   const [view, setView] = useState('grid');
   const [meta, setMeta] = useState('');
   const [toast, setToast] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [showReviews, setShowReviews] = useState(false);
+
   const [searchMode, setSearchMode] = useState('db');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [liveLoading, setLiveLoading] = useState(false);
 
   const sortedProducts = useMemo(() => sortProducts(products, sortKey), [products, sortKey]);
   const priceStats = useMemo(() => getPriceStats(sortedProducts), [sortedProducts]);
@@ -109,8 +110,7 @@ export default function HomePage() {
     setLoading(true);
     setProducts([]);
     setMeta('');
-    setShowReviews(false);
-    setReviews([]);
+
     setSearchMode(isUrl ? 'url' : 'db');
 
     if (pushHistory) {
@@ -130,9 +130,26 @@ export default function HomePage() {
         const data = await fetchJson(`${API_BASE}/products?q=${encodeURIComponent(searchTerm)}&limit=100`);
         setProducts(data.products || []);
         setMeta(`${data.total || 0} result${data.total === 1 ? '' : 's'}`);
+        
+        if (data.needsLiveScrape) {
+          setLiveLoading(true);
+          // Fire and forget live scrape, then refetch
+          fetch(`${API_BASE}/products/live?q=${encodeURIComponent(searchTerm)}&limit=20`)
+            .then(res => res.json())
+            .then(async (liveData) => {
+              if (liveData.success) {
+                // Re-fetch products to get the newly added items
+                const newData = await fetchJson(`${API_BASE}/products?q=${encodeURIComponent(searchTerm)}&limit=100`);
+                setProducts(newData.products || []);
+                setMeta(`${newData.total || 0} result${newData.total === 1 ? '' : 's'}`);
+              }
+            })
+            .catch(console.error)
+            .finally(() => setLiveLoading(false));
+        }
       }
 
-      fetchReviews(searchTerm);
+
     } catch (error) {
       console.error('Search error:', error);
       showToast(error.message || 'Search failed. Please try again.', 'error');
@@ -141,16 +158,7 @@ export default function HomePage() {
     }
   }
 
-  async function fetchReviews(searchTerm) {
-    try {
-      const data = await fetchJson(`${API_BASE}/reviews?q=${encodeURIComponent(searchTerm)}`);
-      setReviews(data.reviews || []);
-      setShowReviews(true);
-    } catch (err) {
-      console.error('Review fetch failed:', err);
-      setShowReviews(false);
-    }
-  }
+
 
   function handleHintClick(value) {
     setQuery(value);
@@ -165,12 +173,18 @@ export default function HomePage() {
             <span className="logo-icon">⚡</span>
             <span className="logo-text">FLASHI</span>
           </a>
-          <nav className="nav">
-            <a href="/" className="nav-link">Home</a>
-            <a href="#how-it-works" className="nav-link">How It Works</a>
-            <a href="#stores-bar" className="nav-link">Stores</a>
+          <nav className={`nav ${menuOpen ? 'open' : ''}`}>
+            <a href="/" className="nav-link" onClick={() => setMenuOpen(false)}>Home</a>
+            <a href="#how-it-works" className="nav-link" onClick={() => setMenuOpen(false)}>How It Works</a>
+            <a href="#stores-bar" className="nav-link" onClick={() => setMenuOpen(false)}>Stores</a>
+            <a href="#contact" className="nav-link contact-nav-link" onClick={() => setMenuOpen(false)}>Contact Us</a>
           </nav>
-          <a href="#contact" className="contact-btn">Contact Us</a>
+          <a href="#contact" className="contact-btn" onClick={() => setMenuOpen(false)}>Contact Us</a>
+          <button className={`hamburger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+          </button>
         </div>
       </header>
 
@@ -225,14 +239,15 @@ export default function HomePage() {
       {loading ? (
         <section className="loading-section">
           <div className="container">
-            <div className="loading-content">
-              <div className="loading-spinner">
-                <div className="spinner-ring"></div>
-                <div className="spinner-ring"></div>
-                <div className="spinner-ring"></div>
-              </div>
-              <h3 className="loading-title">Searching across saved product data...</h3>
-              <p className="loading-subtitle">Please wait while we fetch the latest entries.</p>
+            <div className="loading-grid">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="skeleton-card">
+                  <div className="skeleton-image"></div>
+                  <div className="skeleton-line"></div>
+                  <div className="skeleton-line short"></div>
+                  <div className="skeleton-btn"></div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -243,7 +258,15 @@ export default function HomePage() {
               <div className="results-header" id="results-header">
                 <div className="results-info">
                   <h2 className="results-title">Results for "{query}"</h2>
-                  <p className="results-meta">{meta}</p>
+                  <p className="results-meta">
+                    {meta}
+                    {liveLoading && (
+                      <span className="live-loading-indicator">
+                        <span className="live-dot"></span>
+                        Scanning for more live deals...
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div className="results-controls">
                   <div className="sort-group">
@@ -309,10 +332,6 @@ export default function HomePage() {
                           <span className="product-original-price">{formatPrice(product.originalPrice)}</span>
                         ) : null}
                       </div>
-                      <div className="product-rating">
-                        <span className="rating-text">{product.rating?.toFixed(1) ?? 'N/A'} ★</span>
-                        <span className="review-count">({product.reviewCount || 0} reviews)</span>
-                      </div>
                       <div className="product-footer">
                         <div className="product-footer-top">
                           <span className="product-store-name">
@@ -323,11 +342,9 @@ export default function HomePage() {
                             {product.inStock !== false ? 'In Stock' : 'Out of Stock'}
                           </span>
                         </div>
-                        <div className="product-actions">
-                          <a href={product.url} target="_blank" rel="noreferrer" className="product-visit-btn">
-                            Visit Store
-                          </a>
-                        </div>
+                        <a href={product.url} target="_blank" rel="noreferrer" className="product-visit-btn">
+                          Visit Store →
+                        </a>
                       </div>
                     </div>
                   </article>
@@ -338,38 +355,7 @@ export default function HomePage() {
         )
       )}
 
-      {showReviews && reviews.length > 0 && (
-        <section className="results-section" id="reviews-section">
-          <div className="container">
-            <h2 className="results-title">Customer Reviews</h2>
-            <div className="products-grid list-view" style={{ gap: '16px' }}>
-              {reviews.map((review, index) => (
-                <article className="review-card" key={`${review.author}-${index}`}>
-                  <div className="review-header">
-                    <div className="review-author-info">
-                      <div className="review-avatar">{review.author.split(' ').map((word) => word[0]).join('').toUpperCase()}</div>
-                      <div>
-                        <div className="review-author">{review.author}</div>
-                        <div className="review-date">{new Date(review.date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-                      </div>
-                    </div>
-                    <div className="review-badges">
-                      {review.verified && <span className="verified-badge">✓ Verified Purchase</span>}
-                      <span className="review-store-badge" style={{ background: review.storeColor || '#6366f1' }}>{review.store}</span>
-                    </div>
-                  </div>
-                  <div className="product-rating" style={{ marginBottom: 8 }}>
-                    <span className="rating-text">{review.rating}/5</span>
-                  </div>
-                  <div className="review-title-text">{review.title}</div>
-                  <p className="review-text">{review.text}</p>
-                  <div className="review-helpful">👍 {review.helpful || 0} people found this helpful</div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+
 
       <section className="how-section" id="how-it-works">
         <div className="container">
