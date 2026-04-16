@@ -3,6 +3,7 @@ node_modules/
 .env
 *.log
 *_raw.html
+olx_*.html
 .vscode/
 client/dist/
 .DS_Store
