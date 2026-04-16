@@ -14,9 +14,7 @@ import { saveProducts } from './db.js';
 import { getRelevantCategoryUrls, CATEGORY_PAGE_CONFIG } from './categoryLinks.js';
 
 const stores = [
-  // Daraz: disabled - Alibaba bot-protection (_____tmd_____/punish) blocks ALL server-side requests
-  // regardless of User-Agent, headers, or endpoint variant. Re-enable if a workaround is found.
-  // { adapter: daraz, name: 'Daraz', domain: 'daraz.pk' },
+  { adapter: daraz, name: 'Daraz', domain: 'daraz.pk' },
   { adapter: priceoye, name: 'PriceOye', domain: 'priceoye.pk' },
   { adapter: mega, name: 'Mega.pk', domain: 'mega.pk' },
   { adapter: highfy, name: 'Highfy', domain: 'highfy.pk' },
@@ -358,6 +356,11 @@ export async function scrapeCategoryUrl(url, limit = 20) {
     throw new Error('Unsupported store for category scraping.');
   }
 
+  // Daraz fast path: use JSON API instead of slow HTML link crawling
+  if (storeKey === 'daraz.pk') {
+    return scrapeDarazCategoryFast(validUrl, limit);
+  }
+
   const response = await axios.get(validUrl, {
     headers: getRequestHeaders(),
     timeout: 30000,
@@ -398,6 +401,78 @@ export async function scrapeCategoryUrl(url, limit = 20) {
   return {
     url: validUrl,
     scannedLinks: productUrls.length,
+    validProducts: products.length,
+    savedCount: saveResult.newCount,
+    updatedCount: saveResult.updatedCount,
+    products,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function scrapeDarazCategoryFast(url, limit = 20) {
+  // Convert category page URL to JSON API URL
+  // e.g. https://www.daraz.pk/laptops/ → https://www.daraz.pk/laptops/?ajax=true
+  // e.g. https://www.daraz.pk/catalog?q=Laptops → https://www.daraz.pk/catalog?q=Laptops&ajax=true
+  const separator = url.includes('?') ? '&' : '?';
+  const apiUrl = `${url}${separator}ajax=true&isFirstRequest=true&page=1`;
+
+  const response = await axios.get(apiUrl, {
+    headers: {
+      ...getRequestHeaders(),
+      'x-requested-with': 'XMLHttpRequest',
+      'Accept': 'application/json',
+    },
+    timeout: 30000,
+  });
+
+  const data = response.data;
+  if (!data?.mods?.listItems) {
+    // Fallback: if JSON API fails, try the HTML version with searchProducts
+    const urlObj = new URL(url);
+    const query = urlObj.searchParams.get('q') || urlObj.pathname.split('/').filter(Boolean)[0] || '';
+    if (query) {
+      const results = await daraz.searchProducts(query);
+      const products = results.slice(0, limit);
+      const saveResult = await saveProducts(products, `category:${url}`);
+      return {
+        url,
+        scannedLinks: results.length,
+        validProducts: products.length,
+        savedCount: saveResult.newCount,
+        updatedCount: saveResult.updatedCount,
+        products,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    throw new Error('Daraz category returned no products');
+  }
+
+  const items = data.mods.listItems;
+  const products = items.slice(0, limit).map(item => {
+    let itemUrl = item.itemUrl || item.productUrl || '';
+    if (itemUrl.startsWith('//')) itemUrl = 'https:' + itemUrl;
+    else if (!itemUrl.startsWith('http')) itemUrl = 'https://www.daraz.pk' + itemUrl;
+
+    const originalPrice = parseFloat(String(item.originalPrice || item.price || '0').replace(/[^0-9.]/g, ''));
+    const salePrice = parseFloat(String(item.price || '0').replace(/[^0-9.]/g, ''));
+
+    return {
+      title: item.name || item.title || 'Unknown',
+      price: salePrice || originalPrice || 0,
+      originalPrice: originalPrice || salePrice || 0,
+      url: itemUrl,
+      image: item.image || '',
+      store: 'Daraz',
+      rating: parseFloat(item.ratingScore || '0') || 0,
+      reviews: parseInt(item.review || '0', 10) || 0,
+    };
+  }).filter(p => p.title && p.price > 0 && p.url);
+
+  const saveResult = await saveProducts(products, `category:${url}`);
+
+  return {
+    url,
+    scannedLinks: items.length,
     validProducts: products.length,
     savedCount: saveResult.newCount,
     updatedCount: saveResult.updatedCount,

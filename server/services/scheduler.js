@@ -16,7 +16,7 @@ const defaultQueries = [
 
 const QUERY_CSV = process.env.SCRAPER_QUERIES || defaultQueries.join(',');
 const JOB_QUERIES = QUERY_CSV.split(',').map(q => q.trim()).filter(Boolean);
-const INTERVAL_MINUTES = parseInt(process.env.SCRAPER_INTERVAL_MINUTES, 10) || 30;
+const INTERVAL_MINUTES = parseInt(process.env.SCRAPER_INTERVAL_MINUTES, 10) || 240;
 const INTERVAL_MS = Math.max(INTERVAL_MINUTES, 1) * 60 * 1000;
 
 let lastRun = null;
@@ -141,6 +141,9 @@ export async function runBackgroundScrape() {
 
 export function startScheduler() {
   if (intervalId) return;
+  // Prevent duplicate schedulers in Next.js dev mode (layout compiles per-page)
+  if (globalThis.__schedulerStarted) return;
+  globalThis.__schedulerStarted = true;
 
   nextRun = new Date(Date.now() + INTERVAL_MS);
   console.log(`[Scheduler] Scheduler will run every ${INTERVAL_MINUTES} minutes. Next run at ${nextRun.toISOString()}`);

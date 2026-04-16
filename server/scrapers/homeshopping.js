@@ -6,7 +6,7 @@ const STORE_NAME = 'HomeShopping';
 const STORE_URL = 'https://homeshopping.pk';
 const STORE_COLOR = '#000000';
 
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 20) {
   try {
     // API endpoint might be easier, but let's do a basic HTML fallback
     const searchUrl = `${STORE_URL}/search.php?q=${encodeURIComponent(query)}`;

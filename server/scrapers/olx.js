@@ -1,46 +1,60 @@
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 import { getRequestHeaders, parsePrice, sanitizeText } from '../utils/helpers.js';
 
 const STORE_NAME = 'OLX';
 const STORE_URL = 'https://www.olx.com.pk';
 const STORE_COLOR = '#002f34';
-const OLX_IMAGE_BASE = 'https://images.olx.com.pk/thumbnails';
 
 /**
- * Extract listing items from the window.state JSON embedded in OLX HTML.
- * Items have: title, price (number), slug, coverPhoto.id, location, etc.
+ * Extract product listings from OLX search results HTML.
+ * Uses <li aria-label="Listing"> product cards which contain:
+ * - <a href="/item/{slug}-iid-{id}"> with correct product URLs
+ * - "Rs X,XXX" text for prices
  */
 function extractItemsFromHtml(html) {
+  const $ = cheerio.load(html);
   const items = [];
+  const seen = new Set();
 
-  // OLX embeds all data in window.state = {...};
-  // The items are nested deep, but we can extract them by regex-matching
-  // individual item objects that contain "title", "slug", "coverPhoto"
-  
-  // Match item-like objects: they have "slug":"some-product-slug" and "title":"..."
-  // We use a robust regex to extract each item block
-  const itemRegex = /"coverPhoto":\{[^}]*"id":(\d+)[^}]*\}[^]*?"price":(\d+)[^]*?"slug":"([^"]+)"[^]*?"title":"([^"]+)"/g;
-  
-  let match;
-  while ((match = itemRegex.exec(html)) !== null) {
-    const [, photoId, price, slug, title] = match;
-    const priceNum = parseInt(price);
-    if (!title || priceNum <= 0) continue;
+  $('li[aria-label="Listing"]').each((_, el) => {
+    const $el = $(el);
+    const $a = $el.find('a[href*="/item/"]').first();
+    let href = $a.attr('href') || '';
+    const title = $a.attr('title') || $el.attr('title') || '';
+    if (!href || !title) return;
 
-    // Extract location from nearby context
-    const contextStart = Math.max(0, match.index - 50);
-    const contextEnd = Math.min(html.length, match.index + match[0].length + 500);
-    const context = html.substring(contextStart, contextEnd);
-    const locMatch = context.match(/"location\.lvl\d+":\{[^}]*"name":"([^"]+)"/);
+    // Ensure full URL
+    if (href.startsWith('/')) href = `${STORE_URL}${href}`;
+
+    // Deduplicate by href
+    if (seen.has(href)) return;
+    seen.add(href);
+
+    // Extract price from "Rs X,XXX" or "Rs X.XX Lac/Crore" text within the listing
+    const text = $el.text();
+    let price = 0;
+    const lacMatch = text.match(/Rs\s*([\d.]+)\s*(Lac|Lakh|Crore)/i);
+    if (lacMatch) {
+      const num = parseFloat(lacMatch[1]);
+      const unit = lacMatch[2].toLowerCase();
+      price = unit === 'crore' ? Math.round(num * 10000000) : Math.round(num * 100000);
+    } else {
+      const priceMatch = text.match(/Rs\s*([\d,]+)/);
+      price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : 0;
+    }
+
+    // Extract image
+    const $img = $el.find('img[src*="olx.com.pk"], img[data-src*="olx.com.pk"]');
+    const image = $img.attr('src') || $img.attr('data-src') || '';
 
     items.push({
       title: title.replace(/\\u002F/g, '/').replace(/\\"/g, '"'),
-      price: priceNum,
-      slug,
-      imageId: photoId,
-      location: locMatch ? locMatch[1] : '',
+      price,
+      url: href,
+      image,
     });
-  }
+  });
 
   return items;
 }
@@ -49,7 +63,7 @@ function extractItemsFromHtml(html) {
  * Search for products on OLX.com.pk
  * OLX is a classifieds marketplace — products are user-listed, often second-hand.
  */
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 20) {
   try {
     const slug = query.trim().replace(/\s+/g, '-');
     const searchUrl = `${STORE_URL}/items/q-${slug}`;
@@ -65,31 +79,26 @@ export async function searchProducts(query, limit = 10) {
     });
 
     const html = response.data;
+    const items = extractItemsFromHtml(html);
     const products = [];
 
-    // Extract items from the embedded window.state JSON
-    const items = extractItemsFromHtml(html);
-
-    const seen = new Set();
     for (const item of items) {
       if (products.length >= limit) break;
-      if (seen.has(item.slug)) continue;
-      seen.add(item.slug);
+      if (item.price <= 0) continue;
 
       products.push({
         title: sanitizeText(item.title),
         price: item.price,
         originalPrice: null,
         discount: null,
-        image: `${OLX_IMAGE_BASE}/${item.imageId}-400x300.webp`,
-        url: `${STORE_URL}/item/${item.slug}`,
+        image: item.image,
+        url: item.url,
         rating: 0,
         reviewCount: 0,
         store: STORE_NAME,
         storeUrl: STORE_URL,
         storeColor: STORE_COLOR,
         inStock: true,
-        location: item.location,
       });
     }
 
@@ -127,7 +136,7 @@ export async function getProductDetails(url) {
         title: sanitizeText(title),
         price,
         originalPrice: null,
-        image: coverMatch ? `${OLX_IMAGE_BASE}/${coverMatch[1]}-400x300.webp` : '',
+        image: coverMatch ? `https://images.olx.com.pk/thumbnails/${coverMatch[1]}-400x300.webp` : '',
         url,
         rating: 0,
         reviewCount: 0,

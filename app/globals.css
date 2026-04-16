@@ -267,8 +267,11 @@ input:focus, select:focus, textarea:focus {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: url('/hero_background_abstract_1776258697416.png') center/cover no-repeat;
-  opacity: 0.15;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, rgba(59, 130, 246, 0.10) 0%, transparent 50%);
+  opacity: 0.8;
   mix-blend-mode: overlay;
   pointer-events: none;
 }

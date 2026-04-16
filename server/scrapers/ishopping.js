@@ -6,7 +6,7 @@ const STORE_NAME = 'iShopping';
 const STORE_URL = 'https://www.ishopping.pk';
 const STORE_COLOR = '#f26522';
 
-export async function searchProducts(query, limit = 10) {
+export async function searchProducts(query, limit = 20) {
   try {
     const searchUrl = `${STORE_URL}/catalogsearch/result/?q=${encodeURIComponent(query)}`;
     

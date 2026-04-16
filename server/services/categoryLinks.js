@@ -1,137 +1,160 @@
 export const CATEGORY_PAGE_CONFIG = [
+  // ───── DARAZ (real category pages for focused results) ─────
+  {
+    store: 'Daraz',
+    title: 'Mobile Phones',
+    url: 'https://www.daraz.pk/catalog?q=Smart%20Phones',
+    keywords: ['mobile', 'phone', 'smartphone', 'android phone', 'iphone'],
+  },
   {
     store: 'Daraz',
     title: 'Mobile Accessories',
     url: 'https://www.daraz.pk/catalog?q=Mobile%20Accessories',
-    keywords: [
-      'mobile accessories', 'phone accessories', 'charger', 'cable',
-      'power bank', 'screen protector', 'phone case'
-    ],
+    keywords: ['mobile accessories', 'phone accessories', 'charger', 'cable', 'power bank', 'screen protector', 'phone case'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Laptops',
+    url: 'https://www.daraz.pk/laptops/',
+    keywords: ['laptop', 'notebook', 'computer', 'pc', 'gaming laptop', 'macbook'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Tablets',
+    url: 'https://www.daraz.pk/tablets/',
+    keywords: ['tablet', 'ipad', 'tab', 'samsung tab'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Televisions',
+    url: 'https://www.daraz.pk/televisions/',
+    keywords: ['tv', 'television', 'smart tv', 'led tv', 'oled'],
   },
   {
     store: 'Daraz',
     title: 'Headphones & Headsets',
     url: 'https://www.daraz.pk/catalog?q=Headphones%20%26%20Headsets',
-    keywords: [
-      'headphones', 'headset', 'earphones', 'earbuds',
-      'handsfree', 'airpods', 'bluetooth headphones',
-      'wireless earbuds', 'gaming headset'
-    ],
+    keywords: ['headphones', 'headset', 'earphones', 'earbuds', 'handsfree', 'airpods', 'bluetooth headphones', 'wireless earbuds', 'gaming headset'],
   },
   {
     store: 'Daraz',
     title: 'Portable Speakers',
     url: 'https://www.daraz.pk/catalog?q=Portable%20Speakers',
-    keywords: [
-      'speaker', 'bluetooth speaker', 'portable speaker',
-      'sound system', 'wireless speaker'
-    ],
+    keywords: ['speaker', 'bluetooth speaker', 'portable speaker', 'sound system', 'wireless speaker'],
   },
   {
     store: 'Daraz',
     title: 'Smart Watches',
-    url: 'https://www.daraz.pk/catalog?q=Smart%20Watches',
-    keywords: [
-      'smart watch', 'smartwatch', 'fitness band',
-      'fitness tracker', 'wearable'
-    ],
+    url: 'https://www.daraz.pk/smart-watches/',
+    keywords: ['smart watch', 'smartwatch', 'fitness band', 'fitness tracker', 'wearable'],
   },
   {
     store: 'Daraz',
-    title: 'Laptops',
-    url: 'https://www.daraz.pk/catalog?q=Laptops',
-    keywords: [
-      'laptop', 'notebook', 'computer', 'pc', 'gaming laptop'
-    ],
+    title: 'Cameras & Drones',
+    url: 'https://www.daraz.pk/cameras/',
+    keywords: ['camera', 'dslr', 'drone', 'photography', 'video camera', 'mirrorless'],
   },
   {
     store: 'Daraz',
-    title: 'Mobile Phones',
-    url: 'https://www.daraz.pk/catalog?q=Smart%20Phones',
-    keywords: [
-      'mobile', 'phone', 'smartphone', 'android phone', 'iphone'
-    ],
+    title: 'Gaming Consoles',
+    url: 'https://www.daraz.pk/gaming-consoles/',
+    keywords: ['gaming', 'console', 'playstation', 'ps5', 'xbox', 'nintendo', 'gaming accessories'],
   },
   {
     store: 'Daraz',
     title: 'Kitchen Appliances',
-    url: 'https://www.daraz.pk/catalog?q=Kitchen%20Appliances',
-    keywords: [
-      'kitchen appliances', 'blender', 'juicer',
-      'oven', 'cooking appliances'
-    ],
+    url: 'https://www.daraz.pk/kitchen-appliances/',
+    keywords: ['kitchen appliances', 'blender', 'juicer', 'oven', 'microwave', 'cooking appliances', 'air fryer'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Home Appliances',
+    url: 'https://www.daraz.pk/home-appliances/',
+    keywords: ['home appliance', 'washing machine', 'iron', 'vacuum cleaner', 'fan', 'heater', 'air conditioner', 'ac'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Refrigerators',
+    url: 'https://www.daraz.pk/refrigerators/',
+    keywords: ['refrigerator', 'fridge', 'freezer'],
   },
   {
     store: 'Daraz',
     title: 'Beauty & Makeup',
     url: 'https://www.daraz.pk/catalog?q=Makeup',
-    keywords: [
-      'makeup', 'cosmetics', 'beauty products',
-      'foundation', 'lipstick'
-    ],
+    keywords: ['makeup', 'cosmetics', 'beauty products', 'foundation', 'lipstick'],
   },
   {
     store: 'Daraz',
     title: 'Skin Care',
     url: 'https://www.daraz.pk/catalog?q=Skin%20Care',
-    keywords: [
-      'skincare', 'skin care', 'face wash',
-      'cream', 'serum'
-    ],
+    keywords: ['skincare', 'skin care', 'face wash', 'cream', 'serum', 'moisturizer', 'sunscreen'],
   },
   {
     store: 'Daraz',
     title: 'Hair Care',
     url: 'https://www.daraz.pk/catalog?q=Hair%20Care',
-    keywords: [
-      'hair care', 'shampoo', 'conditioner',
-      'hair oil', 'hair treatment'
-    ],
+    keywords: ['hair care', 'shampoo', 'conditioner', 'hair oil', 'hair treatment'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Fragrances',
+    url: 'https://www.daraz.pk/fragrances/',
+    keywords: ['perfume', 'fragrance', 'cologne', 'body spray', 'attar'],
   },
   {
     store: 'Daraz',
     title: 'Men Clothing',
-    url: 'https://www.daraz.pk/catalog?q=Shirts%20%26%20Polo',
-    keywords: [
-      'men clothing', 'shirts', 'tshirts',
-      'jeans', 'pants', 'mens fashion'
-    ],
+    url: 'https://www.daraz.pk/mens-clothing/',
+    keywords: ['men clothing', 'shirts', 'tshirts', 'jeans', 'pants', 'mens fashion', 'shalwar kameez'],
   },
   {
     store: 'Daraz',
     title: 'Women Clothing',
-    url: 'https://www.daraz.pk/catalog?q=Dresses%20%26%20Skirts',
-    keywords: [
-      'women clothing', 'dress', 'skirts',
-      'fashion', 'ladies dress'
-    ],
+    url: 'https://www.daraz.pk/womens-clothing/',
+    keywords: ['women clothing', 'dress', 'skirts', 'fashion', 'ladies dress', 'kurti', 'lawn'],
   },
   {
     store: 'Daraz',
-    title: 'Shoes & Sports',
-    url: 'https://www.daraz.pk/catalog?q=Shoes%20%26%20Clothing',
-    keywords: [
-      'shoes', 'sneakers', 'sports shoes',
-      'running shoes', 'nike shoes'
-    ],
+    title: 'Shoes',
+    url: 'https://www.daraz.pk/shoes/',
+    keywords: ['shoes', 'sneakers', 'sports shoes', 'running shoes', 'sandals', 'heels', 'chappal'],
   },
   {
     store: 'Daraz',
-    title: 'Gaming',
-    url: 'https://www.daraz.pk/catalog?q=Gaming%20Consoles',
-    keywords: [
-      'gaming', 'console', 'playstation',
-      'xbox', 'gaming accessories'
-    ],
+    title: 'Bags & Luggage',
+    url: 'https://www.daraz.pk/bags/',
+    keywords: ['bag', 'handbag', 'backpack', 'luggage', 'wallet', 'purse'],
   },
   {
     store: 'Daraz',
-    title: 'Cameras & Drones',
-    url: 'https://www.daraz.pk/catalog?q=Cameras%20%26%20Drones',
-    keywords: [
-      'camera', 'dslr', 'drone',
-      'photography', 'video camera'
-    ],
+    title: 'Watches',
+    url: 'https://www.daraz.pk/watches/',
+    keywords: ['watch', 'wristwatch', 'analog watch', 'digital watch'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Groceries',
+    url: 'https://www.daraz.pk/catalog?q=Groceries',
+    keywords: ['grocery', 'groceries', 'food', 'snacks', 'cooking oil', 'rice', 'flour'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Baby Products',
+    url: 'https://www.daraz.pk/catalog?q=Baby%20Products',
+    keywords: ['baby', 'diaper', 'baby care', 'stroller', 'baby food'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Sports & Fitness',
+    url: 'https://www.daraz.pk/catalog?q=Sports%20%26%20Fitness',
+    keywords: ['sports', 'fitness', 'gym', 'exercise', 'yoga', 'cricket', 'football'],
+  },
+  {
+    store: 'Daraz',
+    title: 'Automotive',
+    url: 'https://www.daraz.pk/catalog?q=Car%20Accessories',
+    keywords: ['car accessories', 'automotive', 'car', 'bike accessories', 'dashcam'],
   },
   {
     store: 'PriceOye',

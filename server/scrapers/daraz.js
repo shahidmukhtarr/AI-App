@@ -7,31 +7,66 @@ const STORE_COLOR = '#f85606';
 
 /**
  * Daraz search via their internal AJAX catalog API.
- * The endpoint returns a JSON object with product listings.
- * Endpoint: /catalog/?ajax=true&isFirstRequest=true&q=<query>&page=1
+ * Uses multi-page fetching with session cookies for reliability.
+ * Endpoint: /catalog/?ajax=true&isFirstRequest=true&q=<query>&page=<n>
  */
 export async function searchProducts(query, limit = 30) {
   try {
-    const searchUrl = `${STORE_URL}/catalog/?ajax=true&isFirstRequest=true&q=${encodeURIComponent(query)}&page=1`;
+    // Fetch up to 2 pages for better coverage
+    const maxPages = Math.min(Math.ceil(limit / 40), 2);
+    let allItems = [];
+    let sessionCookies = '';
 
-    const response = await axios.get(searchUrl, {
-      headers: {
+    for (let page = 1; page <= maxPages; page++) {
+      const searchUrl = `${STORE_URL}/catalog/?ajax=true&isFirstRequest=${page === 1}&q=${encodeURIComponent(query)}&page=${page}`;
+
+      const headers = {
         ...getRequestHeaders(),
         'Accept': 'application/json, text/plain, */*',
         'Referer': `${STORE_URL}/catalog/?q=${encodeURIComponent(query)}`,
         'x-requested-with': 'XMLHttpRequest',
-      },
-      timeout: 15000,
-    });
+      };
 
-    const data = response.data;
-    if (!data || typeof data !== 'object') {
-      console.log(`[${STORE_NAME}] Unexpected response format`);
-      return [];
+      // Attach session cookies from first page response
+      if (sessionCookies) {
+        headers['Cookie'] = sessionCookies;
+      }
+
+      const response = await axios.get(searchUrl, {
+        headers,
+        timeout: 20000,
+        maxRedirects: 3,
+        validateStatus: (status) => status < 400,
+      });
+
+      // Capture cookies for subsequent page requests
+      if (page === 1 && response.headers['set-cookie']) {
+        sessionCookies = response.headers['set-cookie']
+          .map(c => c.split(';')[0])
+          .join('; ');
+      }
+
+      const data = response.data;
+
+      // Check for bot protection redirect
+      if (typeof data === 'string' && data.includes('_____tmd_____')) {
+        console.log(`[${STORE_NAME}] Bot protection detected on page ${page}, stopping pagination`);
+        break;
+      }
+
+      if (!data || typeof data !== 'object') {
+        console.log(`[${STORE_NAME}] Unexpected response format on page ${page}`);
+        break;
+      }
+
+      const items = data?.mods?.listItems || data?.mainInfo?.listItems || [];
+      if (items.length === 0) break;
+      allItems.push(...items);
+
+      if (allItems.length >= limit) break;
     }
 
-    // Items are in data.mods.listItems or data.mainInfo.listItems
-    const items = data?.mods?.listItems || data?.mainInfo?.listItems || [];
+    const items = allItems;
 
     const products = [];
     for (const item of items) {
@@ -51,9 +86,16 @@ export async function searchProducts(query, limit = 30) {
       // Image
       const image = item.image || '';
 
-      // URL: item.itemUrl is a relative path like /products/i/123456.html
+      // URL: item.itemUrl can be relative (/products/...), protocol-relative (//www.daraz.pk/...), or absolute
       const itemUrl = item.itemUrl || '';
-      const url = itemUrl.startsWith('http') ? itemUrl : `${STORE_URL}${itemUrl}`;
+      let url;
+      if (itemUrl.startsWith('http')) {
+        url = itemUrl;
+      } else if (itemUrl.startsWith('//')) {
+        url = `https:${itemUrl}`;
+      } else {
+        url = `${STORE_URL}${itemUrl}`;
+      }
 
       // Rating & reviews
       const rating = parseFloat(item.ratingScore) || 0;

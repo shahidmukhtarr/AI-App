@@ -134,7 +134,7 @@ export default function HomePage() {
         if (data.needsLiveScrape) {
           setLiveLoading(true);
           // Fire and forget live scrape, then refetch
-          fetch(`${API_BASE}/products/live?q=${encodeURIComponent(searchTerm)}&limit=20`)
+          fetch(`${API_BASE}/products/live?q=${encodeURIComponent(searchTerm)}&limit=50`)
             .then(res => res.json())
             .then(async (liveData) => {
               if (liveData.success) {
