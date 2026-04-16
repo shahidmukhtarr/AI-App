@@ -168,12 +168,23 @@ export default function HomePage() {
     }
     setSubmitting(true);
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contactForm),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+
       showToast('Thank you for your message! We will get back to you soon.', 'success');
       setContactForm({ name: '', email: '', subject: 'General Inquiry', message: '' });
     } catch (error) {
-      showToast('Failed to send message. Please try again.', 'error');
+      console.error('Contact error:', error);
+      showToast(error.message || 'Failed to send message. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }

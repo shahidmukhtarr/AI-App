@@ -318,3 +318,27 @@ export async function getDbStats() {
     latestScrape: latestScrape ? new Date(latestScrape).toISOString() : null,
   };
 }
+
+export async function saveContactMessage(messageData) {
+  const client = getSupabaseClient();
+  if (!client) return { error: 'Database not initialized' };
+
+  const { data, error } = await client
+    .from('contact_messages')
+    .insert([
+      {
+        name: messageData.name,
+        email: messageData.email,
+        subject: messageData.subject,
+        message: messageData.message,
+        created_at: new Date().toISOString(),
+      }
+    ]);
+
+  if (error) {
+    console.error('[DB] Contact save error:', error.message);
+    throw error;
+  }
+
+  return { success: true, data };
+}
