@@ -349,7 +349,7 @@ export async function scrapeCategoryUrl(url, limit = 20) {
   }
 
   // Daraz fast path: use JSON API instead of slow HTML link crawling
-  if (storeKey === 'daraz.pk') {
+  if (storeKey === 'daraz') {
     return scrapeDarazCategoryFast(validUrl, limit);
   }
 
