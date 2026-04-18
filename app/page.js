@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 
 const API_BASE = '/api';
 const popularQueries = [
@@ -12,8 +11,8 @@ const popularQueries = [
   'Power Bank',
 ];
 
-const LIVE_WAIT_MESSAGE = 'Please wait 5 to 10 seconds for accurate results while we scrape live products.';
-const DB_WAIT_MESSAGE = 'Searching products... please wait a few seconds.';
+const LIVE_WAIT_MESSAGE = 'Gathering Information Please Wait For Few Seconds...';
+const DB_WAIT_MESSAGE = 'Gathering Information Please Wait For Few Seconds...';
 
 function formatPrice(value) {
   if (value == null || Number.isNaN(Number(value))) return 'N/A';
@@ -231,7 +230,6 @@ export default function HomePage() {
           <nav className={`nav ${menuOpen ? 'open' : ''}`}>
             <a href="/" className="nav-link" onClick={() => setMenuOpen(false)}>Home</a>
             <a href="#how-it-works" className="nav-link" onClick={() => setMenuOpen(false)}>How It Works</a>
-            <a href="#stores-bar" className="nav-link" onClick={() => setMenuOpen(false)}>Stores</a>
             <a href="#contact" className="nav-link contact-nav-link" onClick={() => setMenuOpen(false)}>Contact Us</a>
           </nav>
           <a href="#contact" className="contact-btn" onClick={() => setMenuOpen(false)}>Contact Us</a>
@@ -280,25 +278,6 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                <AnimatePresence>
-                  {liveLoading && (
-                    <motion.div
-                      className="live-search-banner"
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.25, ease: 'easeOut' }}
-                    >
-                      <motion.span
-                        className="live-dot"
-                        animate={{ scale: [1, 1.3, 1] }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-                      />
-                      {LIVE_WAIT_MESSAGE}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
                 <div className="trust-section">
                   <div className="trust-label"><h2>Most Popular Stores</h2></div>
                   <div className="trust-logos">
@@ -335,6 +314,12 @@ export default function HomePage() {
       {loading ? (
         <section className="loading-section">
           <div className="container">
+            <div className="loading-info" style={{ marginBottom: 'var(--spacing-lg)', textAlign: 'center' }}>
+              <div className="live-loading-indicator" style={{ margin: '0 auto', justifyContent: 'center' }}>
+                <span className="live-dot"></span>
+                {statusMessage}
+              </div>
+            </div>
             <div className="loading-grid">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="skeleton-card">
@@ -356,24 +341,12 @@ export default function HomePage() {
                   <h2 className="results-title">Results for "{query}"</h2>
                   <p className="results-meta">
                     {meta}
-                    <AnimatePresence>
-                      {(loading || liveLoading) && statusMessage && (
-                        <motion.span
-                          className="live-loading-indicator"
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 4 }}
-                          transition={{ duration: 0.2, ease: 'easeOut' }}
-                        >
-                          <motion.span
-                            className="live-dot"
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-                          ></motion.span>
-                          {statusMessage}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
+                    {(loading || liveLoading) && statusMessage && (
+                      <span className="live-loading-indicator">
+                        <span className="live-dot"></span>
+                        {statusMessage}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="results-controls">

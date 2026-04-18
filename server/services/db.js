@@ -207,16 +207,15 @@ export async function queryStoredProducts(options = {}) {
     if (words.length === 0) {
       // Fallback: use original query as single phrase
       const searchValue = `%${q.trim().replace(/%/g, '\\%')}%`;
-      query = query.ilike('title', searchValue);
-    } else if (words.length === 1) {
-      const searchValue = `%${words[0].replace(/%/g, '\\%')}%`;
-      query = query.or(`title.ilike.${searchValue},store.ilike.${searchValue},source_query.ilike.${searchValue}`);
+      query = query.or(`title.ilike.${searchValue},source_query.ilike.${searchValue}`);
     } else {
-      // AND logic: every word must appear in the title (chaining .ilike() applies AND in Supabase)
-      for (const word of words) {
-        const v = `%${word.replace(/%/g, '\\%')}%`;
-        query = query.ilike('title', v);
-      }
+      // Flexible matching:
+      // 1. All words must match the title (AND logic)
+      // 2. OR the source_query matches the search term (useful for products saved during this specific search)
+      const titleConditions = words.map(w => `title.ilike.%${w.replace(/%/g, '\\%')}%`).join(',');
+      const sourceQueryValue = `%${q.trim().replace(/%/g, '\\%')}%`;
+      
+      query = query.or(`and(${titleConditions}),source_query.ilike.${sourceQueryValue}`);
     }
   }
 
